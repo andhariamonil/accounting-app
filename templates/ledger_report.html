@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ledger Report</title>
+    <link rel="stylesheet" href="/static/style4.css">
+</head>
+<body>
+    <header>
+        <h1>Ledger Report</h1>
+    </header>
+
+    <main>
+        <!-- Ledger Report Form -->
+        <section>
+            <h2>Select Account and Date Range</h2>
+            <form action="/ledger_report" method="POST">
+                <select name="account_id" required>
+                    <option value="">Select Account</option>
+                    {% for account in accounts %}
+                    <option value="{{ account[0] }}">{{ account[1] }}</option>
+                    {% endfor %}
+                </select>
+                <input type="date" name="start_date" required>
+                <input type="date" name="end_date" required>
+                <button type="submit">Generate Report</button>
+            </form>
+        </section>
+
+        {% if ledger_data %}
+        <!-- Ledger Report Table -->
+        <section>
+            <h2>Account Ledger for {{ account_name }}</h2>  <!-- Use account_name passed from backend -->
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Money Received</th>
+                        <th>Money Sent</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in ledger_data %}
+                    <tr>
+                        <td>{{ row[0] }}</td>
+                        <td>{{ row[2] }}</td>
+                        <td>{{ row[1] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+        {% endif %}
+    </main>
+</body>
+</html>

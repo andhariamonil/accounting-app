@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accounting App</title>
+    <link rel="stylesheet" href="/static/style4.css">
+</head>
+<body>
+    <header>
+        <h1>Accounting Management</h1>
+    </header>
+
+    <main>
+        <!-- Add Account Section -->
+        <section>
+            <h2>Add Account</h2>
+            <form action="/add_account" method="POST">
+                <input type="text" name="account_name" placeholder="Account Name" required>
+                <button type="submit">Add Account</button>
+            </form>
+        </section>
+
+        <!-- Accounts Table -->
+        <section>
+            <h2>Accounts</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th> <!-- Only show name, remove ID -->
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for account in accounts %}
+                    <tr>
+                        <td>{{ account[1] }}</td> <!-- Show only account name -->
+                        <td><a href="/delete_account/{{ account[0] }}">Delete</a></td> <!-- Delete action still uses the ID -->
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Transactions Table -->
+        <section>
+            <h2>Transactions</h2>
+            <form action="/add_transaction" method="POST">
+                <input type="date" name="date" required>
+                <select name="from_account" required>
+                    <option value="">From Account</option>
+                    {% for account in accounts %}
+                    <option value="{{ account[0] }}">{{ account[1] }}</option> <!-- account ID is used here for transactions -->
+                    {% endfor %}
+                </select>
+                <select name="to_account" required>
+                    <option value="">To Account</option>
+                    {% for account in accounts %}
+                    <option value="{{ account[0] }}">{{ account[1] }}</option>
+                    {% endfor %}
+                </select>
+                <input type="number" name="amount" placeholder="Amount" required>
+                <input type="text" name="remark" placeholder="Remark">
+                <button type="submit">Add Transaction</button>
+            </form>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>From</th>
+                        <th>To</th>
+                        <th>Amount</th>
+                        <th>Remark</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transaction in transactions %}
+                    <tr>
+                        <td>{{ transaction[1] }}</td>
+                        <td>{{ get_account_name(transaction[2]) }}</td>
+                        <td>{{ get_account_name(transaction[3]) }}</td>
+                        <td>{{ transaction[4] }}</td>
+                        <td>{{ transaction[5] }}</td>
+                        <td><a href="/delete_transaction/{{ transaction[0] }}">Delete</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Debt Summary -->
+        <section>
+            <h2>Debt Summary</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Account</th>
+                        <th>Own money from</th>
+                        <th>Amount(Rs)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in debt_summary %}
+                    <tr>
+                        <td>{{ row[0] }}</td>
+                        <td>{{ row[1] }}</td>
+                        <td>{{ row[2] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Ledger Report Link -->
+        <section>
+            <h2><a href="/ledger_report">Generate Ledger Report</a></h2>
+        </section>
+    </main>
+</body>
+</html>
