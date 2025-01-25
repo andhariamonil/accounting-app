@@ -1,17 +1,23 @@
+import psycopg2
 from flask import Flask, render_template, request, redirect, url_for
-import sqlite3
+import os
 
 app = Flask(__name__)
 
-# Initialize database
+# Set up the PostgreSQL connection using the database URL provided by Render
+DATABASE_URL = os.environ.get("DATABASE_URL", "your_postgresql_connection_url_here")
+
+# Initialize PostgreSQL database
 def init_db():
-    conn = sqlite3.connect('accounting.db')
+    conn = psycopg2.connect(DATABASE_URL, sslmode='require')
     c = conn.cursor()
+
+    # Create tables if they don't exist
     c.execute('''CREATE TABLE IF NOT EXISTS accounts (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY,
                     name TEXT NOT NULL)''')
     c.execute('''CREATE TABLE IF NOT EXISTS transactions (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY,
                     date TEXT NOT NULL,
                     from_account INTEGER,
                     to_account INTEGER,
@@ -24,16 +30,16 @@ def init_db():
 
 # Get account name from the account ID
 def get_account_name(account_id):
-    conn = sqlite3.connect('accounting.db')
+    conn = psycopg2.connect(DATABASE_URL, sslmode='require')
     c = conn.cursor()
-    c.execute("SELECT name FROM accounts WHERE id = ?", (account_id,))
+    c.execute("SELECT name FROM accounts WHERE id = %s", (account_id,))
     account = c.fetchone()
     conn.close()
     return account[0] if account else 'Unknown'
 
 @app.route('/')
 def index():
-    conn = sqlite3.connect('accounting.db')
+    conn = psycopg2.connect(DATABASE_URL, sslmode='require')
     c = conn.cursor()
 
     # Fetch accounts
@@ -72,19 +78,19 @@ def index():
 def add_account():
     account_name = request.form['account_name']
     if account_name:
-        conn = sqlite3.connect('accounting.db')
+        conn = psycopg2.connect(DATABASE_URL, sslmode='require')
         c = conn.cursor()
-        c.execute("INSERT INTO accounts (name) VALUES (?)", (account_name,))
+        c.execute("INSERT INTO accounts (name) VALUES (%s)", (account_name,))
         conn.commit()
         conn.close()
     return redirect(url_for('index'))
 
 @app.route('/delete_account/<int:account_id>')
 def delete_account(account_id):
-    conn = sqlite3.connect('accounting.db')
+    conn = psycopg2.connect(DATABASE_URL, sslmode='require')
     c = conn.cursor()
-    c.execute("DELETE FROM transactions WHERE from_account = ? OR to_account = ?", (account_id, account_id))
-    c.execute("DELETE FROM accounts WHERE id = ?", (account_id,))
+    c.execute("DELETE FROM transactions WHERE from_account = %s OR to_account = %s", (account_id, account_id))
+    c.execute("DELETE FROM accounts WHERE id = %s", (account_id,))
     conn.commit()
     conn.close()
     return redirect(url_for('index'))
@@ -97,10 +103,10 @@ def add_transaction():
     amount = float(request.form['amount'])
     remark = request.form['remark']
 
-    conn = sqlite3.connect('accounting.db')
+    conn = psycopg2.connect(DATABASE_URL, sslmode='require')
     c = conn.cursor()
     c.execute('''INSERT INTO transactions (date, from_account, to_account, amount, remark) 
-                 VALUES (?, ?, ?, ?, ?)''', 
+                 VALUES (%s, %s, %s, %s, %s)''', 
               (date, from_account, to_account, amount, remark))
     conn.commit()
     conn.close()
@@ -108,16 +114,16 @@ def add_transaction():
 
 @app.route('/delete_transaction/<int:transaction_id>')
 def delete_transaction(transaction_id):
-    conn = sqlite3.connect('accounting.db')
+    conn = psycopg2.connect(DATABASE_URL, sslmode='require')
     c = conn.cursor()
-    c.execute("DELETE FROM transactions WHERE id = ?", (transaction_id,))
+    c.execute("DELETE FROM transactions WHERE id = %s", (transaction_id,))
     conn.commit()
     conn.close()
     return redirect(url_for('index'))
 
 @app.route('/ledger_report', methods=['GET', 'POST'])
 def ledger_report():
-    conn = sqlite3.connect('accounting.db')
+    conn = psycopg2.connect(DATABASE_URL, sslmode='require')
     c = conn.cursor()
 
     # Fetch accounts
@@ -133,17 +139,17 @@ def ledger_report():
         end_date = request.form['end_date']
 
         # Get account name from the selected account_id
-        c.execute("SELECT name FROM accounts WHERE id = ?", (account_id,))
+        c.execute("SELECT name FROM accounts WHERE id = %s", (account_id,))
         account_name = c.fetchone()[0]  # Fetch the account name
 
         # Query to get ledger data for the selected account and date range
         c.execute('''
             SELECT t.date, 
-                   SUM(CASE WHEN t.from_account = ? THEN t.amount ELSE 0 END) AS money_sent,
-                   SUM(CASE WHEN t.to_account = ? THEN t.amount ELSE 0 END) AS money_received
+                   SUM(CASE WHEN t.from_account = %s THEN t.amount ELSE 0 END) AS money_sent,
+                   SUM(CASE WHEN t.to_account = %s THEN t.amount ELSE 0 END) AS money_received
             FROM transactions t
-            WHERE t.date BETWEEN ? AND ?
-            AND (t.from_account = ? OR t.to_account = ?)
+            WHERE t.date BETWEEN %s AND %s
+            AND (t.from_account = %s OR t.to_account = %s)
             GROUP BY t.date
             ORDER BY t.date
         ''', (account_id, account_id, start_date, end_date, account_id, account_id))
