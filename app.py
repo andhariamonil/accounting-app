@@ -5,7 +5,8 @@ import sqlite3
 app = Flask(__name__)
 
 # Get the database URL from the environment variable (defaults to 'accounting.db' if not set)
-DATABASE_URL = os.getenv("DATABASE_URL", "accounting.db")
+DATABASE_URL = os.path.join(os.getcwd(), os.getenv('DATABASE_URL', 'accounting.db'))
+
 
 # Initialize database
 def init_db():
