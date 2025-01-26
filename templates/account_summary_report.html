@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Summary Report</title>
+    <link rel="stylesheet" href="/static/style4.css">
+</head>
+<body>
+    <header>
+        <h1>Account Summary Report</h1>
+    </header>
+
+    <main>
+        <!-- Account Selection Form -->
+        <section>
+            <form action="/account_summary" method="POST">
+                <select name="account_id" required>
+                    {% for account in accounts %}
+                    <option value="{{ account[0] }}">{{ account[1] }}</option>
+                    {% endfor %}
+                </select>
+                <input type="date" name="start_date" required>
+                <input type="date" name="end_date" required>
+                <button type="submit">Generate Report</button>
+            </form>
+        </section>
+
+        {% if report_data %}
+        <!-- Account Summary Table -->
+        <section>
+            <h2>Account Summary for {{ selected_account_name }}</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Other Account</th>
+                        <th>Money Received From {{ selected_account_name }}</th>
+                        <th>Money Sent To {{ selected_account_name }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in report_data %}
+                    <tr>
+                        <td>{{ row[0] }}</td>
+                        <td>{{ row[1] }}</td>
+                        <td>{{ row[2] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+        {% else %}
+        <p>No report data available. Please select an account and date range.</p>
+        {% endif %}
+    </main>
+</body>
+</html>

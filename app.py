@@ -31,7 +31,7 @@ def get_account_name(account_id):
     conn.close()
     return account[0] if account else 'Unknown'
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
     conn = sqlite3.connect('accounting.db')
     c = conn.cursor()
@@ -40,22 +40,29 @@ def index():
     c.execute("SELECT * FROM accounts")
     accounts = c.fetchall()
 
-    # Fetch transactions
-    c.execute("SELECT * FROM transactions")
-    transactions = c.fetchall()
+    transactions = []
+    start_date = None
+    end_date = None
+    if request.method == 'POST':
+        start_date = request.form['start_date']
+        end_date = request.form['end_date']
+
+        # Fetch transactions within the date range
+        c.execute('''SELECT * FROM transactions 
+                     WHERE date BETWEEN ? AND ?''', 
+                     (start_date, end_date))
+        transactions = c.fetchall()
 
     # Calculate debt summary
-    c.execute('''
-        SELECT a1.name AS from_account, 
-               a2.name AS to_account, 
-               SUM(CASE WHEN t.from_account = a1.id THEN t.amount ELSE -t.amount END) AS balance
-        FROM accounts a1
-        JOIN accounts a2 ON a1.id != a2.id
-        LEFT JOIN transactions t ON (t.from_account = a1.id AND t.to_account = a2.id) 
-                                OR (t.from_account = a2.id AND t.to_account = a1.id)
-        GROUP BY a1.name, a2.name
-        HAVING balance > 0
-    ''')
+    c.execute('''SELECT a1.name AS from_account, 
+                        a2.name AS to_account, 
+                        SUM(CASE WHEN t.from_account = a1.id THEN t.amount ELSE -t.amount END) AS balance
+                 FROM accounts a1
+                 JOIN accounts a2 ON a1.id != a2.id
+                 LEFT JOIN transactions t ON (t.from_account = a1.id AND t.to_account = a2.id) 
+                                         OR (t.from_account = a2.id AND t.to_account = a1.id)
+                 GROUP BY a1.name, a2.name
+                 HAVING balance > 0''')
     debt_summary = c.fetchall()
 
     conn.close()
@@ -66,6 +73,8 @@ def index():
         transactions=transactions,
         debt_summary=debt_summary,
         get_account_name=get_account_name,
+        start_date=start_date,  # Pass start_date and end_date to preserve them
+        end_date=end_date
     )
 
 @app.route('/add_account', methods=['POST'])
@@ -106,13 +115,17 @@ def add_transaction():
     conn.close()
     return redirect(url_for('index'))
 
-@app.route('/delete_transaction/<int:transaction_id>')
-def delete_transaction(transaction_id):
-    conn = sqlite3.connect('accounting.db')
-    c = conn.cursor()
-    c.execute("DELETE FROM transactions WHERE id = ?", (transaction_id,))
-    conn.commit()
-    conn.close()
+@app.route('/delete_transaction', methods=['POST'])
+def delete_transaction():
+    transaction_ids = request.form.getlist('transaction_ids')  # Get a list of selected transaction IDs
+
+    if transaction_ids:
+        conn = sqlite3.connect('accounting.db')
+        c = conn.cursor()
+        c.executemany("DELETE FROM transactions WHERE id = ?", [(int(tid),) for tid in transaction_ids])
+        conn.commit()
+        conn.close()
+
     return redirect(url_for('index'))
 
 @app.route('/ledger_report', methods=['GET', 'POST'])
@@ -137,16 +150,15 @@ def ledger_report():
         account_name = c.fetchone()[0]  # Fetch the account name
 
         # Query to get ledger data for the selected account and date range
-        c.execute('''
-            SELECT t.date, 
-                   SUM(CASE WHEN t.from_account = ? THEN t.amount ELSE 0 END) AS money_sent,
-                   SUM(CASE WHEN t.to_account = ? THEN t.amount ELSE 0 END) AS money_received
-            FROM transactions t
-            WHERE t.date BETWEEN ? AND ?
-            AND (t.from_account = ? OR t.to_account = ?)
-            GROUP BY t.date
-            ORDER BY t.date
-        ''', (account_id, account_id, start_date, end_date, account_id, account_id))
+        c.execute('''SELECT t.date, 
+                            SUM(CASE WHEN t.from_account = ? THEN t.amount ELSE 0 END) AS money_sent,
+                            SUM(CASE WHEN t.to_account = ? THEN t.amount ELSE 0 END) AS money_received
+                     FROM transactions t
+                     WHERE t.date BETWEEN ? AND ? 
+                     AND (t.from_account = ? OR t.to_account = ?)
+                     GROUP BY t.date
+                     ORDER BY t.date''', 
+                  (account_id, account_id, start_date, end_date, account_id, account_id))
 
         ledger_data = c.fetchall()
         conn.close()
@@ -156,6 +168,47 @@ def ledger_report():
         accounts=accounts,
         ledger_data=ledger_data,
         account_name=account_name  # Pass the account name here
+    )
+
+@app.route('/account_summary', methods=['GET', 'POST'])
+def account_summary():
+    conn = sqlite3.connect('accounting.db')
+    c = conn.cursor()
+
+    # Fetch accounts
+    c.execute("SELECT * FROM accounts")
+    accounts = c.fetchall()
+
+    report_data = None
+    selected_account_name = None
+    if request.method == 'POST':
+        account_id = request.form['account_id']
+        start_date = request.form['start_date']
+        end_date = request.form['end_date']
+
+        # Get account name from the selected account_id
+        c.execute("SELECT name FROM accounts WHERE id = ?", (account_id,))
+        selected_account_name = c.fetchone()[0]  # Fetch the account name
+
+        # Query to get account summary data for the selected account and date range
+        c.execute('''SELECT a2.name AS other_account,
+                            SUM(CASE WHEN t.from_account = ? AND t.to_account = a2.id THEN t.amount ELSE 0 END) AS money_sent,
+                            SUM(CASE WHEN t.to_account = ? AND t.from_account = a2.id THEN t.amount ELSE 0 END) AS money_received
+                     FROM transactions t
+                     JOIN accounts a2 ON a2.id != ?
+                     WHERE t.date BETWEEN ? AND ? 
+                     AND (t.from_account = ? OR t.to_account = ?)
+                     GROUP BY a2.name''', 
+                  (account_id, account_id, account_id, start_date, end_date, account_id, account_id))
+
+        report_data = c.fetchall()
+        conn.close()
+
+    return render_template(
+        'account_summary_report.html',
+        accounts=accounts,
+        report_data=report_data,
+        selected_account_name=selected_account_name,  # Pass the selected account name here
     )
 
 if __name__ == '__main__':

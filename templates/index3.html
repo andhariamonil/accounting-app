@@ -27,34 +27,32 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Name</th> <!-- Only show name, remove ID -->
+                        <th>Name</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for account in accounts %}
                     <tr>
-                        <td>{{ account[1] }}</td> <!-- Show only account name -->
-                        <td><a href="/delete_account/{{ account[0] }}">Delete</a></td> <!-- Delete action still uses the ID -->
+                        <td>{{ account[1] }}</td>
+                        <td><a href="/delete_account/{{ account[0] }}">Delete</a></td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </section>
 
-        <!-- Transactions Table -->
+        <!-- Add Transaction Section -->
         <section>
-            <h2>Transactions</h2>
+            <h2>Add Transaction</h2>
             <form action="/add_transaction" method="POST">
                 <input type="date" name="date" required>
                 <select name="from_account" required>
-                    <option value="">From Account</option>
                     {% for account in accounts %}
-                    <option value="{{ account[0] }}">{{ account[1] }}</option> <!-- account ID is used here for transactions -->
+                    <option value="{{ account[0] }}">{{ account[1] }}</option>
                     {% endfor %}
                 </select>
                 <select name="to_account" required>
-                    <option value="">To Account</option>
                     {% for account in accounts %}
                     <option value="{{ account[0] }}">{{ account[1] }}</option>
                     {% endfor %}
@@ -63,42 +61,58 @@
                 <input type="text" name="remark" placeholder="Remark">
                 <button type="submit">Add Transaction</button>
             </form>
-
-            <table>
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>From</th>
-                        <th>To</th>
-                        <th>Amount</th>
-                        <th>Remark</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for transaction in transactions %}
-                    <tr>
-                        <td>{{ transaction[1] }}</td>
-                        <td>{{ get_account_name(transaction[2]) }}</td>
-                        <td>{{ get_account_name(transaction[3]) }}</td>
-                        <td>{{ transaction[4] }}</td>
-                        <td>{{ transaction[5] }}</td>
-                        <td><a href="/delete_transaction/{{ transaction[0] }}">Delete</a></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
         </section>
 
-        <!-- Debt Summary -->
+        <!-- Transactions Section -->
+        <section>
+            <h2>Transactions</h2>
+            <form action="/" method="POST">
+                <input type="date" name="start_date" value="{{ start_date }}" required>
+                <input type="date" name="end_date" value="{{ end_date }}" required>
+                <button type="submit">Filter Transactions</button>
+            </form>
+
+            {% if transactions %}
+            <form action="/delete_transaction" method="POST">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Select</th>
+                            <th>Date</th>
+                            <th>From Account</th>
+                            <th>To Account</th>
+                            <th>Amount</th>
+                            <th>Remark</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in transactions %}
+                        <tr>
+                            <td><input type="checkbox" name="transaction_ids" value="{{ transaction[0] }}"></td>
+                            <td>{{ transaction[1] }}</td>
+                            <td>{{ get_account_name(transaction[2]) }}</td>
+                            <td>{{ get_account_name(transaction[3]) }}</td>
+                            <td>{{ transaction[4] }}</td>
+                            <td>{{ transaction[5] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <button type="submit">Delete Selected Transactions</button>
+            </form>
+            {% else %}
+            <p>No transactions found for the selected date range.</p>
+            {% endif %}
+        </section>
+
         <section>
             <h2>Debt Summary</h2>
             <table>
                 <thead>
                     <tr>
                         <th>Account</th>
-                        <th>Own money from</th>
-                        <th>Amount(Rs)</th>
+                        <th>Owes money from</th>
+                        <th>Amount</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -113,9 +127,9 @@
             </table>
         </section>
 
-        <!-- Ledger Report Link -->
         <section>
-            <h2><a href="/ledger_report">Generate Ledger Report</a></h2>
+            <h2><a href="/ledger_report">Ledger Report</a></h2>
+            <h2><a href="/account_summary">Account Summary Report</a></h2>
         </section>
     </main>
 </body>
