@@ -1,11 +1,15 @@
+import os
 from flask import Flask, render_template, request, redirect, url_for
 import sqlite3
 
 app = Flask(__name__)
 
+# Get the database URL from the environment variable (defaults to 'accounting.db' if not set)
+DATABASE_URL = os.getenv("DATABASE_URL", "accounting.db")
+
 # Initialize database
 def init_db():
-    conn = sqlite3.connect('accounting.db')
+    conn = sqlite3.connect(DATABASE_URL)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS accounts (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,7 +28,7 @@ def init_db():
 
 # Get account name from the account ID
 def get_account_name(account_id):
-    conn = sqlite3.connect('accounting.db')
+    conn = sqlite3.connect(DATABASE_URL)
     c = conn.cursor()
     c.execute("SELECT name FROM accounts WHERE id = ?", (account_id,))
     account = c.fetchone()
@@ -33,7 +37,7 @@ def get_account_name(account_id):
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    conn = sqlite3.connect('accounting.db')
+    conn = sqlite3.connect(DATABASE_URL)
     c = conn.cursor()
 
     # Fetch accounts
@@ -81,7 +85,7 @@ def index():
 def add_account():
     account_name = request.form['account_name']
     if account_name:
-        conn = sqlite3.connect('accounting.db')
+        conn = sqlite3.connect(DATABASE_URL)
         c = conn.cursor()
         c.execute("INSERT INTO accounts (name) VALUES (?)", (account_name,))
         conn.commit()
@@ -90,7 +94,7 @@ def add_account():
 
 @app.route('/delete_account/<int:account_id>')
 def delete_account(account_id):
-    conn = sqlite3.connect('accounting.db')
+    conn = sqlite3.connect(DATABASE_URL)
     c = conn.cursor()
     c.execute("DELETE FROM transactions WHERE from_account = ? OR to_account = ?", (account_id, account_id))
     c.execute("DELETE FROM accounts WHERE id = ?", (account_id,))
@@ -106,7 +110,7 @@ def add_transaction():
     amount = float(request.form['amount'])
     remark = request.form['remark']
 
-    conn = sqlite3.connect('accounting.db')
+    conn = sqlite3.connect(DATABASE_URL)
     c = conn.cursor()
     c.execute('''INSERT INTO transactions (date, from_account, to_account, amount, remark) 
                  VALUES (?, ?, ?, ?, ?)''', 
@@ -120,7 +124,7 @@ def delete_transaction():
     transaction_ids = request.form.getlist('transaction_ids')  # Get a list of selected transaction IDs
 
     if transaction_ids:
-        conn = sqlite3.connect('accounting.db')
+        conn = sqlite3.connect(DATABASE_URL)
         c = conn.cursor()
         c.executemany("DELETE FROM transactions WHERE id = ?", [(int(tid),) for tid in transaction_ids])
         conn.commit()
@@ -130,7 +134,7 @@ def delete_transaction():
 
 @app.route('/ledger_report', methods=['GET', 'POST'])
 def ledger_report():
-    conn = sqlite3.connect('accounting.db')
+    conn = sqlite3.connect(DATABASE_URL)
     c = conn.cursor()
 
     # Fetch accounts
@@ -172,7 +176,7 @@ def ledger_report():
 
 @app.route('/account_summary', methods=['GET', 'POST'])
 def account_summary():
-    conn = sqlite3.connect('accounting.db')
+    conn = sqlite3.connect(DATABASE_URL)
     c = conn.cursor()
 
     # Fetch accounts
