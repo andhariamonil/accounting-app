@@ -82,34 +82,6 @@ http://localhost:10000
 
 ---
 
-## 🗄️ Database
-
-The application automatically creates a **SQLite database** named:
-
-```
-accounting.db
-```
-
-### Accounts Table
-
-| Column | Description |
-|------|-------------|
-| id | Unique account ID |
-| name | Account name |
-
-### Transactions Table
-
-| Column | Description |
-|------|-------------|
-| id | Transaction ID |
-| date | Transaction date |
-| from_account | Sender account |
-| to_account | Receiver account |
-| amount | Transaction amount |
-| remark | Optional note |
-
----
-
 ## 📈 Reports
 
 ### Ledger Report
